@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>لوحة تحكم طيبة</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+
+<!-- Firebase Compat SDK - بيشتغل عادي من غير مشاكل -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<style>
+:root{--black:#080808;--gold:#e0b252;--gold2:#f5c842;--card:#141414;--border:rgba(224,178,82,0.2);--red:#e55;--green:#2ecc71;}
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Cairo',sans-serif;}
+body{background:var(--black);color:#fff;min-height:100vh;}
+#loginScreen{position:fixed;inset:0;background:var(--black);display:flex;align-items:center;justify-content:center;z-index:9999;}
+.login-box{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:50px 40px;width:90%;max-width:420px;text-align:center;box-shadow:0 0 60px rgba(224,178,82,0.1);}
+.login-logo{font-size:42px;margin-bottom:10px;}
+.login-box h2{color:var(--gold);font-size:26px;margin-bottom:8px;}
+.login-box p{color:#666;margin-bottom:35px;font-size:14px;}
+.login-box input{width:100%;padding:14px 18px;margin-bottom:14px;border-radius:12px;border:1px solid #2a2a2a;background:#0d0d0d;color:#fff;font-family:'Cairo',sans-serif;font-size:15px;}
+.login-box input:focus{outline:none;border-color:var(--gold);}
+.login-btn{width:100%;padding:15px;background:var(--gold);border:none;border-radius:12px;font-family:'Cairo',sans-serif;font-weight:700;font-size:16px;cursor:pointer;transition:.3s;}
+.login-btn:hover{background:var(--gold2);}
+.login-error{color:var(--red);font-size:13px;margin-top:10px;display:none;}
+#dashboard{display:none;}
+.topbar{background:rgba(0,0,0,0.9);border-bottom:1px solid var(--border);padding:15px 30px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;backdrop-filter:blur(10px);}
+.topbar-logo{color:var(--gold);font-size:20px;font-weight:900;display:flex;align-items:center;gap:10px;}
+.topbar-logo span{font-size:26px;}
+.logout-btn{background:transparent;border:1px solid #333;color:#888;padding:8px 20px;border-radius:20px;cursor:pointer;font-family:'Cairo',sans-serif;font-size:13px;transition:.3s;}
+.logout-btn:hover{border-color:var(--red);color:var(--red);}
+.main{max-width:1300px;margin:auto;padding:30px 20px;}
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:35px;}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:22px;text-align:center;}
+.stat-card .num{font-size:36px;font-weight:900;color:var(--gold);}
+.stat-card p{color:#888;font-size:13px;margin-top:4px;}
+.tabs{display:flex;gap:10px;margin-bottom:30px;flex-wrap:wrap;}
+.tab{background:transparent;border:1px solid #2a2a2a;color:#888;padding:10px 24px;border-radius:30px;cursor:pointer;font-family:'Cairo',sans-serif;font-size:14px;font-weight:600;transition:.3s;}
+.tab.active{background:var(--gold);color:#000;border-color:var(--gold);}
+.tab:hover:not(.active){border-color:var(--gold);color:var(--gold);}
+.panel{display:none;}.panel.active{display:block;}
+.section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;}
+.section-head h3{color:var(--gold);font-size:20px;}
+.add-btn{background:var(--gold);color:#000;border:none;padding:10px 22px;border-radius:30px;cursor:pointer;font-family:'Cairo',sans-serif;font-weight:700;font-size:14px;}
+.seed-btn{background:transparent;border:1px solid rgba(46,204,113,0.4);color:var(--green);padding:9px 18px;border-radius:30px;cursor:pointer;font-family:'Cairo',sans-serif;font-size:13px;font-weight:600;transition:.3s;margin-left:8px;}
+.seed-btn:hover{background:rgba(46,204,113,0.1);}
+.products-table{width:100%;border-collapse:collapse;}
+.products-table th{background:#0d0d0d;color:var(--gold);padding:14px 16px;text-align:right;font-size:13px;border-bottom:1px solid var(--border);}
+.products-table td{padding:14px 16px;border-bottom:1px solid #1a1a1a;font-size:14px;vertical-align:middle;}
+.products-table tr:hover td{background:rgba(224,178,82,0.03);}
+.cat-badge{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;display:inline-block;}
+.cat-men{background:rgba(15,47,38,.8);color:#4ecb71;border:1px solid #4ecb71;}
+.cat-women{background:rgba(80,20,60,.8);color:#e584c4;border:1px solid #e584c4;}
+.cat-unisex{background:rgba(60,50,10,.8);color:var(--gold);border:1px solid var(--gold);}
+.cat-oud{background:rgba(60,30,0,.8);color:#d4845a;border:1px solid #d4845a;}
+.action-btns{display:flex;gap:8px;}
+.edit-btn{background:rgba(224,178,82,0.1);color:var(--gold);border:1px solid var(--border);padding:6px 14px;border-radius:8px;cursor:pointer;font-family:'Cairo',sans-serif;font-size:12px;}
+.del-btn{background:rgba(229,85,85,0.1);color:var(--red);border:1px solid rgba(229,85,85,0.3);padding:6px 14px;border-radius:8px;cursor:pointer;font-family:'Cairo',sans-serif;font-size:12px;}
+.settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;}
+.setting-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:25px;}
+.setting-card h4{color:var(--gold);margin-bottom:18px;font-size:16px;}
+.setting-card label{display:block;color:#888;font-size:13px;margin-bottom:6px;margin-top:14px;}
+.setting-card input,.setting-card textarea{width:100%;padding:11px 14px;border-radius:10px;border:1px solid #2a2a2a;background:#0d0d0d;color:#fff;font-family:'Cairo',sans-serif;font-size:14px;}
+.setting-card input:focus{outline:none;border-color:var(--gold);}
+.save-btn{width:100%;margin-top:18px;padding:12px;background:var(--gold);border:none;border-radius:10px;font-family:'Cairo',sans-serif;font-weight:700;font-size:15px;cursor:pointer;transition:.3s;}
+.save-btn:hover{background:var(--gold2);}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:5000;display:none;align-items:center;justify-content:center;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:35px;width:90%;max-width:540px;max-height:90vh;overflow-y:auto;}
+.modal h3{color:var(--gold);margin-bottom:25px;font-size:20px;}
+.modal label{display:block;color:#888;font-size:13px;margin-bottom:6px;margin-top:16px;}
+.modal input,.modal textarea,.modal select{width:100%;padding:12px 14px;border-radius:10px;border:1px solid #2a2a2a;background:#0d0d0d;color:#fff;font-family:'Cairo',sans-serif;font-size:14px;}
+.modal input:focus,.modal textarea:focus,.modal select:focus{outline:none;border-color:var(--gold);}
+.modal textarea{height:80px;resize:none;}
+.modal-btns{display:flex;gap:10px;margin-top:25px;}
+.modal-btns button{flex:1;padding:13px;border-radius:10px;border:none;cursor:pointer;font-family:'Cairo',sans-serif;font-weight:700;font-size:15px;}
+.modal-btns .confirm{background:var(--gold);color:#000;}
+.modal-btns .cancel{background:#1a1a1a;color:#888;}
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--green);color:#000;padding:14px 30px;border-radius:30px;font-weight:700;font-size:15px;z-index:9999;transition:.4s;opacity:0;}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1;}
+.toast.error{background:var(--red);color:#fff;}
+.saving-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:8000;display:none;align-items:center;justify-content:center;flex-direction:column;gap:15px;}
+.saving-overlay.show{display:flex;}
+.spinner{width:50px;height:50px;border:4px solid rgba(224,178,82,0.2);border-top:4px solid var(--gold);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.saving-overlay p{color:var(--gold);font-size:16px;font-weight:600;}
+.search-bar{width:100%;padding:12px 18px;border-radius:30px;border:1px solid #2a2a2a;background:#0d0d0d;color:#fff;font-family:'Cairo',sans-serif;font-size:14px;margin-bottom:20px;}
+.search-bar:focus{outline:none;border-color:var(--gold);}
+.fb-status{display:inline-flex;align-items:center;gap:8px;background:rgba(46,204,113,0.1);border:1px solid rgba(46,204,113,0.3);padding:6px 16px;border-radius:20px;font-size:13px;color:var(--green);}
+.fb-err{background:rgba(229,85,85,0.1);border-color:rgba(229,85,85,0.3);color:var(--red);}
+.fb-dot{width:8px;height:8px;border-radius:50%;background:currentColor;animation:blink 1.5s infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.3;}}
+@media(max-width:768px){.topbar{padding:12px 15px;}.main{padding:20px 12px;}.products-table th:nth-child(3),.products-table td:nth-child(3){display:none;}}
+</style>
+</head>
+<body>
+
+<div id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">🔐</div>
+    <h2>لوحة تحكم طيبة</h2>
+    <p>أدخل بياناتك للدخول</p>
+    <input type="text" id="loginUser" placeholder="اسم المستخدم" />
+    <input type="password" id="loginPass" placeholder="كلمة المرور" />
+    <button class="login-btn" onclick="doLogin()">دخول</button>
+    <p class="login-error" id="loginError">❌ بيانات خاطئة، حاول مرة تانية</p>
+  </div>
+</div>
+
+<div id="dashboard">
+  <div class="topbar">
+    <div class="topbar-logo"><span>🏪</span> لوحة تحكم طيبة للعطور</div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div class="fb-status" id="fbStatus"><div class="fb-dot"></div> Firebase متصل</div>
+      <button class="logout-btn" onclick="doLogout()">تسجيل خروج ↩</button>
+    </div>
+  </div>
+  <div class="main">
+    <div class="stats-row">
+      <div class="stat-card"><div class="num" id="statTotal">—</div><p>إجمالي العطور</p></div>
+      <div class="stat-card"><div class="num" id="statMen">—</div><p>عطور رجالية</p></div>
+      <div class="stat-card"><div class="num" id="statWomen">—</div><p>عطور نسائية</p></div>
+      <div class="stat-card"><div class="num" id="statOud">—</div><p>عود / مسك</p></div>
+    </div>
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('products',this)">🧴 إدارة العطور</button>
+      <button class="tab" onclick="switchTab('settings',this)">⚙️ الإعدادات</button>
+      <button class="tab" onclick="switchTab('publish',this)">🚀 نشر التعديلات</button>
+    </div>
+
+    <div class="panel active" id="panel-products">
+      <div class="section-head">
+        <h3>🧴 كل العطور</h3>
+        <div>
+          <button class="seed-btn" id="seedBtn" onclick="seedProducts()">📥 استيراد المنتجات (مرة واحدة)</button>
+          <button class="add-btn" onclick="openAddModal()">+ إضافة عطر</button>
+        </div>
+      </div>
+      <input type="text" class="search-bar" placeholder="🔍 ابحث عن عطر..." oninput="searchProducts(this.value)" />
+      <div style="overflow-x:auto;">
+        <table class="products-table">
+          <thead><tr><th>#</th><th>الاسم</th><th>الفئة</th><th>الأسعار</th><th>الوصف</th><th>إجراءات</th></tr></thead>
+          <tbody id="productsTableBody"><tr><td colspan="6" style="text-align:center;padding:40px;color:#555;">⏳ جاري التحميل من Firebase...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-settings">
+      <div class="settings-grid">
+        <div class="setting-card">
+          <h4>💰 الأسعار</h4>
+          <label>سعر 30 مل (جنيه)</label><input type="number" id="price30" value="200" />
+          <label>سعر 50 مل (جنيه)</label><input type="number" id="price50" value="350" />
+          <label>سعر 100 مل (جنيه)</label><input type="number" id="price100" value="650" />
+          <button class="save-btn" onclick="savePrices()">💾 حفظ الأسعار</button>
+        </div>
+        <div class="setting-card">
+          <h4>📞 بيانات التواصل</h4>
+          <label>رقم الواتساب</label><input type="text" id="whatsNum" value="2001202297700" />
+          <label>رابط الانستجرام</label><input type="text" id="instaLink" value="https://www.instagram.com/teba_perfumes" />
+          <label>تيليجرام Chat ID</label><input type="text" id="tgChat" value="1118704634" />
+          <button class="save-btn" onclick="saveContact()">💾 حفظ بيانات التواصل</button>
+        </div>
+        <div class="setting-card">
+          <h4>🖼️ صورة المنتجات</h4>
+          <label>رابط صورة المنتج (URL)</label><input type="text" id="productImgUrl" placeholder="https://..." />
+          <label>أو ارفع صورة</label>
+          <input type="file" id="productImgFile" accept="image/*" onchange="previewImg(this)" style="color:#888;" />
+          <img id="imgPreview" style="width:100%;border-radius:10px;margin-top:12px;display:none;" />
+          <button class="save-btn" onclick="saveProductImg()">💾 حفظ الصورة</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-publish">
+      <div class="setting-card" style="max-width:600px;margin:auto;text-align:center;">
+        <h4>🚀 نشر التعديلات على GitHub</h4>
+        <p style="color:#888;font-size:14px;line-height:1.8;margin:15px 0;">لما تخلص تعديلاتك اضغط الزرار ده عشان يتحدث الموقع فوراً</p>
+        <div id="publishStatus" style="padding:20px;color:#666;font-size:14px;"></div>
+        <button class="save-btn" style="margin-top:0;" onclick="publishToGitHub()">🚀 نشر التعديلات الآن</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h3 id="modalTitle">إضافة عطر جديد</h3>
+    <label>الاسم العربي *</label><input type="text" id="mName" placeholder="مثال: مسك الليل" />
+    <label>الاسم الإنجليزي *</label><input type="text" id="mEn" placeholder="Night Musk" />
+    <label>الوصف</label><textarea id="mDesc" placeholder="وصف قصير..."></textarea>
+    <label>الفئة</label>
+    <select id="mCat">
+      <option value="men">🧔 رجالي</option>
+      <option value="women">👩 نسائي</option>
+      <option value="unisex">✨ مشترك</option>
+      <option value="oud">🪵 عود / مسك</option>
+    </select>
+    <div style="background:#0d0d0d;border:1px solid #2a2a2a;border-radius:12px;padding:16px;margin-top:16px;">
+      <p style="color:var(--gold);font-size:13px;margin-bottom:12px;">💰 سعر خاص (اتركه فاضي للسعر العام)</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+        <div><label style="margin-top:0;">30 مل</label><input type="number" id="mP30" placeholder="200" /></div>
+        <div><label style="margin-top:0;">50 مل</label><input type="number" id="mP50" placeholder="350" /></div>
+        <div><label style="margin-top:0;">100 مل</label><input type="number" id="mP100" placeholder="650" /></div>
+      </div>
+    </div>
+    <div class="modal-btns">
+      <button class="confirm" onclick="saveProduct()">✅ حفظ</button>
+      <button class="cancel" onclick="closeModal()">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="saving-overlay" id="savingOverlay"><div class="spinner"></div><p id="savingMsg">جاري الحفظ...</p></div>
+
+<script>
+// ╔══════════════════════════════════════════════════╗
+// ║  ضع هنا الـ Config من Firebase Console          ║
+// ║  Project Settings → Your Apps → Web (</>)       ║
+// ╚══════════════════════════════════════════════════╝
+var firebaseConfig = {
+  apiKey:            "ضع_API_KEY_هنا",
+  authDomain:        "ضع_AUTH_DOMAIN_هنا",
+  projectId:         "ضع_PROJECT_ID_هنا",
+  storageBucket:     "ضع_STORAGE_BUCKET_هنا",
+  messagingSenderId: "ضع_MESSAGING_SENDER_ID_هنا",
+  appId:             "ضع_APP_ID_هنا"
+};
+
+var ADMIN_USER   = 'tebaperfume';
+var ADMIN_PASS   = 'teba2025';
+var GITHUB_TOKEN = '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';
+var GITHUB_OWNER = 'tebaperfume';
+var GITHUB_REPO  = 'tebaperfume';
+var GITHUB_FILE  = 'index.html';
+
+firebase.initializeApp(firebaseConfig);
+var db = firebase.firestore();
+
+var CAT_LABEL = {men:'رجالي',women:'نسائي',unisex:'مشترك',oud:'عود / مسك'};
+var CAT_CLASS  = {men:'cat-men',women:'cat-women',unisex:'cat-unisex',oud:'cat-oud'};
+var products  = [];
+var settings  = {price30:200,price50:350,price100:650,whatsNum:'2001202297700',instaLink:'https://www.instagram.com/teba_perfumes',tgChat:'1118704634'};
+var editDocId = null;
+
+function doLogin(){
+  var u = document.getElementById('loginUser').value.trim();
+  var p = document.getElementById('loginPass').value.trim();
+  if(u===ADMIN_USER && p===ADMIN_PASS){
+    document.getElementById('loginScreen').style.display='none';
+    document.getElementById('dashboard').style.display='block';
+    startListeners();
+  } else {
+    document.getElementById('loginError').style.display='block';
+  }
+}
+
+document.getElementById('loginPass').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
+
+function doLogout(){
+  document.getElementById('dashboard').style.display='none';
+  document.getElementById('loginScreen').style.display='flex';
+  document.getElementById('loginUser').value='';
+  document.getElementById('loginPass').value='';
+}
+
+function startListeners(){
+  db.collection('products').orderBy('order','asc').onSnapshot(function(snap){
+    products=[];
+    snap.forEach(function(d){products.push(Object.assign({_id:d.id},d.data()));});
+    renderTable(products);
+    updateStats();
+    setFbOk(true);
+  },function(err){console.error(err);setFbOk(false);});
+
+  db.collection('settings').doc('main').onSnapshot(function(snap){
+    if(snap.exists){
+      var d=snap.data();
+      settings=Object.assign(settings,d);
+      document.getElementById('price30').value=d.price30||200;
+      document.getElementById('price50').value=d.price50||350;
+      document.getElementById('price100').value=d.price100||650;
+      document.getElementById('whatsNum').value=d.whatsNum||'';
+      document.getElementById('instaLink').value=d.instaLink||'';
+      document.getElementById('tgChat').value=d.tgChat||'';
+      if(d.productImg){document.getElementById('imgPreview').src=d.productImg;document.getElementById('imgPreview').style.display='block';document.getElementById('productImgUrl').value=d.productImg;}
+    }
+  });
+}
+
+function setFbOk(ok){
+  var el=document.getElementById('fbStatus');
+  el.className=ok?'fb-status':'fb-status fb-err';
+  el.innerHTML='<div class="fb-dot"></div> '+(ok?'Firebase متصل':'خطأ في الاتصال');
+}
+
+function updateStats(){
+  document.getElementById('statTotal').textContent=products.length;
+  document.getElementById('statMen').textContent=products.filter(function(p){return p.cat==='men';}).length;
+  document.getElementById('statWomen').textContent=products.filter(function(p){return p.cat==='women';}).length;
+  document.getElementById('statOud').textContent=products.filter(function(p){return p.cat==='oud';}).length;
+}
+
+function switchTab(tab,btn){
+  document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});
+  document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active');});
+  btn.classList.add('active');
+  document.getElementById('panel-'+tab).classList.add('active');
+}
+
+function renderTable(list){
+  var tbody=document.getElementById('productsTableBody');
+  if(!list.length){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:40px;color:#555;">لا توجد عطور بعد 🧴</td></tr>';return;}
+  tbody.innerHTML=list.map(function(p,i){
+    var p30=p.price30||settings.price30;
+    var p50=p.price50||settings.price50;
+    var p100=p.price100||settings.price100;
+    var hasCustom=p.price30||p.price50||p.price100;
+    return '<tr><td style="color:#555;">'+(i+1)+'</td><td><strong>'+esc(p.name)+'</strong><br><span style="color:#555;font-size:11px;">'+esc(p.en||'')+'</span></td><td><span class="cat-badge '+(CAT_CLASS[p.cat]||'cat-men')+'">'+(CAT_LABEL[p.cat]||p.cat)+'</span></td><td style="font-size:12px;color:#aaa;"><span style="color:'+(hasCustom?'var(--gold)':'#555')+'">'+(hasCustom?'⭐ خاص':'عام')+'</span><br>30مل: <span style="color:var(--gold)">'+p30+'ج</span> | 50مل: <span style="color:var(--gold)">'+p50+'ج</span> | 100مل: <span style="color:var(--gold)">'+p100+'ج</span></td><td style="color:#777;font-size:12px;max-width:160px;">'+esc(p.desc||'')+'</td><td><div class="action-btns"><button class="edit-btn" onclick="openEditModal(\''+p._id+'\')">✏️ تعديل</button><button class="del-btn" onclick="deleteProduct(\''+p._id+'\',\''+esc(p.name)+'\')">🗑 حذف</button></div></td></tr>';
+  }).join('');
+}
+
+function searchProducts(q){
+  var f=products.filter(function(p){return(p.name||'').includes(q)||(p.en||'').toLowerCase().includes(q.toLowerCase())||(p.desc||'').includes(q);});
+  renderTable(f);
+}
+
+function openAddModal(){
+  editDocId=null;
+  document.getElementById('modalTitle').textContent='إضافة عطر جديد';
+  ['mName','mEn','mDesc','mP30','mP50','mP100'].forEach(function(id){document.getElementById(id).value='';});
+  document.getElementById('mCat').value='men';
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function openEditModal(docId){
+  var p=products.find(function(x){return x._id===docId;});
+  if(!p)return;
+  editDocId=docId;
+  document.getElementById('modalTitle').textContent='تعديل: '+p.name;
+  document.getElementById('mName').value=p.name||'';
+  document.getElementById('mEn').value=p.en||'';
+  document.getElementById('mDesc').value=p.desc||'';
+  document.getElementById('mCat').value=p.cat||'men';
+  document.getElementById('mP30').value=p.price30||'';
+  document.getElementById('mP50').value=p.price50||'';
+  document.getElementById('mP100').value=p.price100||'';
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function closeModal(){document.getElementById('modalOverlay').classList.remove('open');}
+
+async function saveProduct(){
+  var name=document.getElementById('mName').value.trim();
+  var en=document.getElementById('mEn').value.trim();
+  var desc=document.getElementById('mDesc').value.trim();
+  var cat=document.getElementById('mCat').value;
+  var p30=document.getElementById('mP30').value;
+  var p50=document.getElementById('mP50').value;
+  var p100=document.getElementById('mP100').value;
+  if(!name||!en){showToast('❌ الاسم مطلوب',true);return;}
+  var obj={name:name,en:en,desc:desc,cat:cat,order:editDocId?(products.find(function(p){return p._id===editDocId;})||{}).order||999:products.length+1};
+  if(p30)obj.price30=parseInt(p30);
+  if(p50)obj.price50=parseInt(p50);
+  if(p100)obj.price100=parseInt(p100);
+  showSaving('جاري الحفظ...');
+  try{
+    if(editDocId){await db.collection('products').doc(editDocId).update(obj);showToast('✅ تم تعديل العطر');}
+    else{await db.collection('products').add(obj);showToast('✅ تم إضافة العطر');}
+    closeModal();
+  }catch(e){showToast('❌ خطأ: '+e.message,true);}
+  hideSaving();
+}
+
+async function deleteProduct(docId,name){
+  if(!confirm('هل تريد حذف "'+name+'"؟'))return;
+  showSaving('جاري الحذف...');
+  try{await db.collection('products').doc(docId).delete();showToast('🗑 تم الحذف');}
+  catch(e){showToast('❌ فشل الحذف',true);}
+  hideSaving();
+}
+
+async function savePrices(){
+  settings.price30=parseInt(document.getElementById('price30').value)||200;
+  settings.price50=parseInt(document.getElementById('price50').value)||350;
+  settings.price100=parseInt(document.getElementById('price100').value)||650;
+  showSaving('جاري حفظ الأسعار...');
+  try{await db.collection('settings').doc('main').set(settings,{merge:true});showToast('✅ تم حفظ الأسعار');}
+  catch(e){showToast('❌ خطأ: '+e.message,true);}
+  hideSaving();
+}
+
+async function saveContact(){
+  settings.whatsNum=document.getElementById('whatsNum').value.trim();
+  settings.instaLink=document.getElementById('instaLink').value.trim();
+  settings.tgChat=document.getElementById('tgChat').value.trim();
+  showSaving('جاري الحفظ...');
+  try{await db.collection('settings').doc('main').set(settings,{merge:true});showToast('✅ تم حفظ بيانات التواصل');}
+  catch(e){showToast('❌ خطأ: '+e.message,true);}
+  hideSaving();
+}
+
+function previewImg(input){
+  var file=input.files[0];if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(e){document.getElementById('imgPreview').src=e.target.result;document.getElementById('imgPreview').style.display='block';settings.productImg=e.target.result;};
+  reader.readAsDataURL(file);
+}
+
+async function saveProductImg(){
+  var url=document.getElementById('productImgUrl').value.trim();
+  if(url)settings.productImg=url;
+  if(!settings.productImg){showToast('❌ اختار صورة أو اكتب رابط',true);return;}
+  showSaving('جاري حفظ الصورة...');
+  try{await db.collection('settings').doc('main').set({productImg:settings.productImg},{merge:true});showToast('✅ تم حفظ الصورة');}
+  catch(e){showToast('❌ خطأ: '+e.message,true);}
+  hideSaving();
+}
+
+async function seedProducts(){
+  if(products.length>0){if(!confirm('في '+products.length+' منتج بالفعل. هل تريد إضافة المنتجات الافتراضية فوقيهم؟'))return;}
+  else{if(!confirm('هيتم رفع 98 عطر على Firebase. متأكد؟'))return;}
+  var btn=document.getElementById('seedBtn');btn.disabled=true;
+  var list=[
+    {name:'اربا بورا',en:'ERBA PURA',desc:'سيترس منعش مع الفانيليا.',cat:'men'},
+    {name:'سترونجر وذ يو',en:'Stronger With You',desc:'هيل دافئ وكستناء حلو.',cat:'men'},
+    {name:'سترونج مي',en:'Strong Me',desc:'مسك خشبي جريء رجولي.',cat:'men'},
+    {name:'مضاوي',en:'MADAWY',desc:'بهارات شرقية مع دفء العنبر.',cat:'men'},
+    {name:'مضاوي جولد',en:'MADAWY GOLD',desc:'لمسة ذهبية على الـ MADAWY الأصلي.',cat:'men'},
+    {name:'الكسندريا ٢',en:'ALEXANDRIA 2',desc:'أجواء متوسطية منعشة.',cat:'men'},
+    {name:'بي ام دبليو',en:'BMW',desc:'انتعاش مائي أنيق.',cat:'men'},
+    {name:'ديور سوفاج',en:'Sauvage Dior',desc:'برغموت كالابري نقي.',cat:'men'},
+    {name:'سوفاج اليكسير',en:'Sauvage Elixir',desc:'تركيز خشبي توابلي مكثف.',cat:'men'},
+    {name:'وان مليون لاكي',en:'One Million Lucky',desc:'جريب فروت مع البندق.',cat:'men'},
+    {name:'وان مليون اليكسير',en:'One Million Elixir',desc:'عنبر غني ومكثف ذهبي.',cat:'men'},
+    {name:'جولد',en:'Gold',desc:'مزيج زهري خشبي فاخر.',cat:'men'},
+    {name:'توباكو فانيليا',en:'Tobacco Vanilla',desc:'تبغ دافئ وفانيليا غنية.',cat:'men'},
+    {name:'اربيان توباكو',en:'Arabian Tobacco',desc:'عود مدخن مع التبغ.',cat:'men'},
+    {name:'ازاررو ونتيدد',en:'Wanted Azzaro',desc:'هيل حار مع الفيتيفير.',cat:'men'},
+    {name:'سبايس بومب اكستريم',en:'Spicebomb Extreme',desc:'قرفة ولافا وعنبر متفجر.',cat:'men'},
+    {name:'انفيكتوس',en:'Invictus',desc:'جريب فروت مائي رياضي.',cat:'men'},
+    {name:'انفيكتوس اليكسير',en:'Invictus Elixir',desc:'تركيز حسي مكثف.',cat:'men'},
+    {name:'مرسيدس',en:'MERCEDES',desc:'أخشاب راقية ومسك.',cat:'men'},
+    {name:'ميجامار',en:'MEGAMARE',desc:'انتعاش بحري عميق.',cat:'men'},
+    {name:'ذارا فور هيم',en:'ZARA FOR HIM',desc:'فوجيري مائي كاجوال.',cat:'men'},
+    {name:'ذارا جولد',en:'ZARA GOLD',desc:'عنبر وخشب الصندل.',cat:'men'},
+    {name:'ذارا',en:'ZARA',desc:'مزيج نظيف منعش.',cat:'men'},
+    {name:'ماجنيتك',en:'Magnetic',desc:'مسك خشبي مغناطيسي.',cat:'men'},
+    {name:'بوص ذا سنت ماجنيتك',en:'Boss The Scent Magnetic',desc:'زنجبيل وفيتيفير.',cat:'men'},
+    {name:'بوص بوتلد',en:'Boss Bottled',desc:'تفاح وقرفة كلاسيكي.',cat:'men'},
+    {name:'بوص بوتلد ابسلو',en:'Boss Bottled Absolu',desc:'عنبر معدني مكثف.',cat:'men'},
+    {name:'بوص بوتلد عود',en:'Boss Bottled Oud',desc:'عود ببصمة Boss.',cat:'men'},
+    {name:'ديور هوم انتنس',en:'Dior Homme Intense',desc:'أيريس وفيتيفير فرنسي.',cat:'men'},
+    {name:'لوميل اليكسير',en:'Le Male Elixir',desc:'فانيليا ولافندر حسي.',cat:'men'},
+    {name:'الترا مل',en:'Ultra Male',desc:'كمثرى ولافندر جريء.',cat:'men'},
+    {name:'الترا مارن',en:'Ultra Marine',desc:'لافندر بحري منعش.',cat:'men'},
+    {name:'هوجو',en:'HUGO',desc:'تفاح أخضر شبابي.',cat:'men'},
+    {name:'هوجو بوص',en:'HUGO BOSS',desc:'فوجيري نظيف متميز.',cat:'men'},
+    {name:'سكلبتشر',en:'Sculpture',desc:'مائي مع عنبر خشبي.',cat:'men'},
+    {name:'اسنشيال',en:'Essential',desc:'سيترس ومسك يومي.',cat:'men'},
+    {name:'شيروتي',en:'Men Cerruti',desc:'توابل وأخشاب إيطالية.',cat:'men'},
+    {name:'هاسيفات نيشان',en:'Hacivat Nishane',desc:'فيتيفير وسيترس تركي.',cat:'men'},
+    {name:'نيشان',en:'Nishane',desc:'مكونات شرقية نادرة.',cat:'men'},
+    {name:'سلفر سنت',en:'Silver Cent',desc:'أخشاب فضية ومسك.',cat:'men'},
+    {name:'هج سنت',en:'HUG Cent',desc:'مسك دافئ مريح.',cat:'men'},
+    {name:'انا الابيض',en:'Ana Al Abyad',desc:'مسك أبيض بودري.',cat:'men'},
+    {name:'كريزي لااف',en:'Crazy Love',desc:'فاكهي خشبي مرح.',cat:'men'},
+    {name:'اكوا دي جيو',en:'Aqua di Gio',desc:'برغموت بحري وياسمين.',cat:'men'},
+    {name:'مونت بلانك',en:'Mont Blanc',desc:'لافندر وجيرانيوم جبلي.',cat:'men'},
+    {name:'مون بلو',en:'Moon Blue',desc:'أخشاب زرقاء باردة.',cat:'men'},
+    {name:'مون بلو ليجيند',en:'Moon Blue Legend',desc:'عنبر خشبي مكثف.',cat:'men'},
+    {name:'جيمي شو',en:'Game Show',desc:'سيترس وقاعدة حلوة.',cat:'men'},
+    {name:'وان مان شو',en:'One Man Show',desc:'توابل خشبية جريئة.',cat:'men'},
+    {name:'كاريزما',en:'Charisma',desc:'أخشاب وتوابل مغناطيسية.',cat:'men'},
+    {name:'سيجار',en:'Cigarette',desc:'تبغ ناعم وأرز.',cat:'men'},
+    {name:'تشيلز رجالي',en:'Chills M',desc:'انتعاش جليدي خشبي.',cat:'men'},
+    {name:'كروم ليجند',en:'Chrome Legend',desc:'معدني منعش.',cat:'men'},
+    {name:'تومي',en:'Tommy',desc:'تفاح ولافندر كلاسيكي.',cat:'men'},
+    {name:'٤٠ عقدة',en:'40 Knots',desc:'انتعاش خشبي بحري.',cat:'men'},
+    {name:'بلاك افغانو',en:'Black Afghano',desc:'قنب مظلم وعود.',cat:'men'},
+    {name:'جود جيرل',en:'Good Girl',desc:'ياسمين وتونكا بين.',cat:'women'},
+    {name:'سكاندال باي نايت',en:'Scandal By Night',desc:'عسل وباتشولي.',cat:'women'},
+    {name:'سي ارماني',en:'Si Armani',desc:'كشمش أسود وورد.',cat:'women'},
+    {name:'سي فيوري',en:'Si Fiery',desc:'ورد وعنبر أنثوي.',cat:'women'},
+    {name:'سي ريد',en:'Si Red',desc:'توت أحمر ومسك.',cat:'women'},
+    {name:'اوليمبيا',en:'Olympea',desc:'فانيليا مالحة وكشمير.',cat:'women'},
+    {name:'فيري سيكسي ناو',en:'Very Sexy Now',desc:'توت أحمر وزهور.',cat:'women'},
+    {name:'جادور',en:"J'Adore",desc:'يلانج وورد أنثوي.',cat:'women'},
+    {name:'كاسيليا',en:'Caselia',desc:'زهور ومسك رقيق.',cat:'women'},
+    {name:'لافي بيل',en:'La Vie Belle',desc:'أيريس وفانيليا.',cat:'women'},
+    {name:'لوست شيري',en:'Lost Cherry',desc:'كرز ولوز فاخر.',cat:'women'},
+    {name:'بينك شوجر',en:'Pink Sugar',desc:'حلوى قطنية وفانيليا.',cat:'women'},
+    {name:'ماي واي',en:'My Way',desc:'ياسمين وزهر البرتقال.',cat:'women'},
+    {name:'بيربري هير',en:'Burberry Her',desc:'توت وياسمين لندني.',cat:'women'},
+    {name:'بيربري بدي',en:'Burberry Body',desc:'خوخ وخشب الصندل.',cat:'women'},
+    {name:'تندر',en:'Tender',desc:'زهور بودرية رومانسية.',cat:'women'},
+    {name:'فيكتوريا سيكريت',en:'Victoria Secret',desc:'مسك وياسمين.',cat:'women'},
+    {name:'بيانكو لاتيه',en:'Bianco Latte',desc:'فانيليا حليبية كريمية.',cat:'women'},
+    {name:'ديلينا دي مارلي',en:'Delina De Marly',desc:'راوند وورد ملكي.',cat:'women'},
+    {name:'بيلي ايليش',en:'Billie Eilish',desc:'ماندرين ومسك.',cat:'women'},
+    {name:'فانتازيا',en:'Fantazia',desc:'زهور فاكهية خيالية.',cat:'women'},
+    {name:'تشيلز نسائي',en:'Chills W',desc:'زهور باردة أنثوية.',cat:'women'},
+    {name:'وصال',en:'Wesal',desc:'عود زهري رقيق.',cat:'unisex'},
+    {name:'يارا',en:'YARA',desc:'زهور ومسك حميمي.',cat:'unisex'},
+    {name:'يارا كاندي',en:'YARA Candy',desc:'زهور فاكهية ساحرة.',cat:'unisex'},
+    {name:'خُمرة',en:'KHAMRAH',desc:'توت وعود مسكر.',cat:'unisex'},
+    {name:'خُمرة قهوة',en:'KHAMRAH Coffee',desc:'قهوة وعنبر.',cat:'unisex'},
+    {name:'خُمرة دخان',en:'KHAMRAH DUKHAN',desc:'بخور مدخن وعود.',cat:'unisex'},
+    {name:'عود أبيض',en:'OUD White',desc:'عود أبيض نقي راقي.',cat:'oud'},
+    {name:'مسك أبيض',en:'White Musk',desc:'مسك أبيض كلاسيكي.',cat:'oud'},
+    {name:'مسك طيبة',en:'Taybah Musk',desc:'مسكنا المميز الأيقوني.',cat:'oud'},
+    {name:'مسك بكرات روج',en:'Musk Rouge',desc:'مسك أحمر خشبي.',cat:'oud'},
+    {name:'مسك رمان',en:'Pomegranate Musk',desc:'رمان ومسك منعش.',cat:'oud'},
+    {name:'مسك فراولة',en:'Strawberry Musk',desc:'فراولة ومسك ناعم.',cat:'oud'},
+    {name:'مسك قهوة',en:'Coffee Musk',desc:'قهوة محمصة ومسك.',cat:'oud'},
+    {name:'مسك توت',en:'Berry Musk',desc:'توت بري ومسك.',cat:'oud'},
+    {name:'مسك فانيليا',en:'Vanilla Musk',desc:'فانيليا ومسك بودري.',cat:'oud'},
+    {name:'مسك بودر',en:'Powder Musk',desc:'مسك بودري ناعم.',cat:'oud'},
+    {name:'مسك انجليزي',en:'English Musk',desc:'مسك بريطاني نظيف.',cat:'oud'},
+    {name:'مسك طهارة',en:'Purity Musk',desc:'مسك أبيض روحاني.',cat:'oud'},
+    {name:'عود كلمات',en:'Oud Kalimat',desc:'عود ثمين بلسمي.',cat:'oud'},
+    {name:'عود بوكيه',en:'Oud Bouquet',desc:'مزيج عود زهري رومانسي.',cat:'oud'}
+  ];
+  showSaving('جاري رفع المنتجات...');
+  var done=0;
+  for(var i=0;i<list.length;i++){
+    await db.collection('products').add(Object.assign({},list[i],{order:i+1}));
+    done++;
+    document.getElementById('savingMsg').textContent='تم رفع '+done+' من '+list.length+'...';
+  }
+  hideSaving();btn.disabled=false;
+  showToast('✅ تم رفع '+done+' عطر على Firebase!');
+}
+
+async function publishToGitHub(){
+  showSaving('جاري بناء الملف ونشره...');
+  try{
+    var r=await fetch('https://api.github.com/repos/'+GITHUB_OWNER+'/'+GITHUB_REPO+'/contents/'+GITHUB_FILE,{headers:{Authorization:'token '+GITHUB_TOKEN,Accept:'application/vnd.github.v3+json'}});
+    var fd=await r.json();
+    var encoded=btoa(unescape(encodeURIComponent(buildHTML())));
+    var pr=await fetch('https://api.github.com/repos/'+GITHUB_OWNER+'/'+GITHUB_REPO+'/contents/'+GITHUB_FILE,{method:'PUT',headers:{Authorization:'token '+GITHUB_TOKEN,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify({message:'🔄 Update from Taybah Dashboard',content:encoded,sha:fd.sha})});
+    hideSaving();
+    if(pr.ok){showToast('🚀 تم النشر على GitHub بنجاح!');document.getElementById('publishStatus').innerHTML='<span style="color:var(--green)">✅ آخر نشر: '+new Date().toLocaleString('ar-EG')+'</span>';}
+    else{var err=await pr.json();showToast('❌ فشل النشر: '+(err.message||''),true);}
+  }catch(e){hideSaving();showToast('❌ خطأ في الاتصال بـ GitHub',true);}
+}
+
+function buildHTML(){
+  var pj=JSON.stringify(products.map(function(p){var o=Object.assign({},p);delete o._id;return o;}));
+  return '<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>طيبة للعطور</title><script>window.SITE_CONFIG={price30:'+settings.price30+',price50:'+settings.price50+',price100:'+settings.price100+',whatsNum:\''+settings.whatsNum+'\',instaLink:\''+settings.instaLink+'\',tgChat:\''+settings.tgChat+'\',productImg:\''+( settings.productImg||'')+'\',products:'+pj+'};<\/script></head><body></body></html>';
+}
+
+function esc(str){return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+
+function showToast(msg,isError){
+  var t=document.getElementById('toast');
+  t.textContent=msg;t.className='toast'+(isError?' error':'');t.classList.add('show');
+  setTimeout(function(){t.classList.remove('show');},3000);
+}
+function showSaving(msg){document.getElementById('savingMsg').textContent=msg||'جاري الحفظ...';document.getElementById('savingOverlay').classList.add('show');}
+function hideSaving(){document.getElementById('savingOverlay').classList.remove('show');}
+</script>
+</body>
+</html>
